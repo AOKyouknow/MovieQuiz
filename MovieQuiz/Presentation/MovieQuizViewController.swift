@@ -14,7 +14,6 @@ final class MovieQuizViewController: UIViewController {
         let currentQuestion = questions[currentQuestionIndex]
         let resultOfConvert = convert(model: currentQuestion)
         show(quiz: resultOfConvert)
-        
     }
     
         // MARK: - Elements of Interface
@@ -122,8 +121,7 @@ final class MovieQuizViewController: UIViewController {
             mainStackViews.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             mainStackViews.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             mainStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0),
-            mainStackViews.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),    
-            mainStackViews.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            mainStackViews.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 3.0 / 2.0),
             buttonStackViews.heightAnchor.constraint(equalToConstant: 60)
          ])
@@ -200,7 +198,6 @@ final class MovieQuizViewController: UIViewController {
     }
     
     // MARK: - Functions
-    //почему нельзя сразу отформатировать данные так, чтобы не было 3 сущности: массив с вопросом, структура для хранения вопроса и модель для вью???
     //создаёт модель вью из вопроса
     private func convert(model: QuizQuestion) -> QuizStepViewModel{
         let image = UIImage(named: model.image) ?? UIImage()
@@ -218,17 +215,19 @@ final class MovieQuizViewController: UIViewController {
         counterLabel.text = step.questionNumber
         imageView.layer.borderWidth = 0
         imageView.layer.borderColor = nil
+        imageView.layer.cornerRadius = 20 // добавлено скругление рамки
     }
             
     //красит рамку в зависимости от правильности ответа
     private func showAnswerResult(isCorrect: Bool){
+        buttonEnabled(isEnabled: false)
         if isCorrect{
                     correctAnswers += 1
                 }
         imageView.layer.masksToBounds = true
         imageView.layer.borderWidth = 8
-        imageView.layer.cornerRadius = 6
-        imageView.layer.borderColor = isCorrect ? UIColor.green.cgColor : UIColor.red.cgColor
+        imageView.layer.cornerRadius = 20
+        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
                 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){
             self.showNextQuestionOrResults()
@@ -248,6 +247,7 @@ final class MovieQuizViewController: UIViewController {
             let nextQuestion = questions[currentQuestionIndex]
             let viewModel = convert(model: nextQuestion)
             show(quiz: viewModel)
+            buttonEnabled(isEnabled: true)
         }
     }
     
@@ -272,6 +272,12 @@ final class MovieQuizViewController: UIViewController {
         let givenAnswer = sender == yesButton
         let currentQuestion = questions[currentQuestionIndex]
         showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+    }
+    
+    //блокирует кнопки
+    private func buttonEnabled(isEnabled: Bool){
+        yesButton.isEnabled = isEnabled
+        noButton.isEnabled = isEnabled
     }
     
 }
