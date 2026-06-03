@@ -1,4 +1,5 @@
 import UIKit
+import SwiftUI
 
 final class MovieQuizViewController: UIViewController {
     
@@ -10,7 +11,7 @@ final class MovieQuizViewController: UIViewController {
         image.layer.cornerRadius = 20 // сглаживание угла
         image.clipsToBounds = true // обрезаем углы
         image.backgroundColor = .gray // нужно ли?
-        image.translatesAutoresizingMaskIntoConstraints = false // отключаем автоматические констрейнты
+        image.translatesAutoresizingMaskIntoConstraints = false
         return image
     }()
     
@@ -35,6 +36,7 @@ final class MovieQuizViewController: UIViewController {
         label.textAlignment = .right
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
+        
         return label
     }()
     
@@ -47,6 +49,7 @@ final class MovieQuizViewController: UIViewController {
         label.textAlignment = .left
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
+        
         return label
     }()
     
@@ -59,6 +62,7 @@ final class MovieQuizViewController: UIViewController {
         button.backgroundColor = UIColor(named: "YP White")
         button.layer.cornerRadius = 15
         button.translatesAutoresizingMaskIntoConstraints = false
+        
         return button
     }()
     
@@ -107,7 +111,7 @@ final class MovieQuizViewController: UIViewController {
         let topStackViews = UIStackView(arrangedSubviews: [questionLabel, counterLabel])
         topStackViews.axis = .horizontal
         topStackViews.distribution = .equalSpacing
-        topStackViews.alignment = .center
+        topStackViews.alignment = .fill
         topStackViews.translatesAutoresizingMaskIntoConstraints = false
         
         let buttonStackViews = UIStackView(arrangedSubviews: [yesButton, noButton])
@@ -117,23 +121,31 @@ final class MovieQuizViewController: UIViewController {
         buttonStackViews.spacing = 20
         buttonStackViews.translatesAutoresizingMaskIntoConstraints = false
         
+        
         let mainStackViews = UIStackView(arrangedSubviews: [topStackViews, imageView, textLabel, buttonStackViews])
         mainStackViews.axis = .vertical
         mainStackViews.distribution = .fill
         mainStackViews.alignment = .fill
         mainStackViews.spacing = 20
         mainStackViews.translatesAutoresizingMaskIntoConstraints = false
-        
+               
         view.addSubview(mainStackViews)
         
+       
         NSLayoutConstraint.activate([
             mainStackViews.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             mainStackViews.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             mainStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0),
             mainStackViews.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            
             imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 3.0 / 2.0),
-            buttonStackViews.heightAnchor.constraint(equalToConstant: 60)
+                        
+            buttonStackViews.heightAnchor.constraint(equalToConstant: 60),
+            topStackViews.heightAnchor.constraint(equalToConstant: 20)
         ])
+        
+        
+        
     }
      
     //создаёт модель вью из вопроса
@@ -200,6 +212,7 @@ final class MovieQuizViewController: UIViewController {
             let firstQuestion = self.questions[self.currentQuestionIndex]
             let viewModel = self.convert(model: firstQuestion)
             self.show(quiz: viewModel)
+            self.buttonEnabled(isEnabled: true)
         }
         alert.addAction(action)
         self.present(alert, animated: true)
@@ -235,7 +248,7 @@ final class MovieQuizViewController: UIViewController {
         let text: String
         let buttonText: String
     }
-     
+        
 }
 
 extension MovieQuizViewController {
@@ -282,4 +295,20 @@ extension MovieQuizViewController {
             text: "Рейтинг этого фильма больше чем 6?",
             correctAnswer: true)
     ]
+}
+
+// MARK: - Preview
+struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> MovieQuizViewController {
+        MovieQuizViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: MovieQuizViewController, context: Context) {}
+}
+
+struct MovieQuizViewController_Previews: PreviewProvider {
+    static var previews: some View {
+        MovieQuizViewControllerPreview()
+            .ignoresSafeArea()
+    }
 }
