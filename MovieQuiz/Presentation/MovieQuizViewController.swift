@@ -12,6 +12,8 @@ final class MovieQuizViewController: UIViewController {
         image.clipsToBounds = true // обрезаем углы
         image.backgroundColor = .gray // нужно ли?
         image.translatesAutoresizingMaskIntoConstraints = false
+        //
+        image.setContentCompressionResistancePriority(.init(750), for: .vertical)
         return image
     }()
     
@@ -24,6 +26,9 @@ final class MovieQuizViewController: UIViewController {
         text.textAlignment = .center
         text.numberOfLines = 2
         text.translatesAutoresizingMaskIntoConstraints = false
+        
+        //
+        text.setContentCompressionResistancePriority(.init(500), for: .vertical)
         return text
     }()
     
@@ -36,6 +41,8 @@ final class MovieQuizViewController: UIViewController {
         label.textAlignment = .right
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
+        //
+        label.setContentCompressionResistancePriority(.init(250), for: .vertical)
         
         return label
     }()
@@ -49,6 +56,8 @@ final class MovieQuizViewController: UIViewController {
         label.textAlignment = .left
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
+        //
+        label.setContentCompressionResistancePriority(.init(250), for: .vertical)
         
         return label
     }()
@@ -62,6 +71,8 @@ final class MovieQuizViewController: UIViewController {
         button.backgroundColor = UIColor(named: "YP White")
         button.layer.cornerRadius = 15
         button.translatesAutoresizingMaskIntoConstraints = false
+        //
+        button.setContentCompressionResistancePriority(.init(1000), for: .vertical)
         
         return button
     }()
@@ -75,8 +86,12 @@ final class MovieQuizViewController: UIViewController {
         button.backgroundColor = UIColor(named: "YP White")
         button.layer.cornerRadius = 15
         button.translatesAutoresizingMaskIntoConstraints = false
+        //
+        button.setContentCompressionResistancePriority(.init(1000), for: .vertical)
         return button
     }()
+    
+    
     // MARK: - Properties
     private var currentQuestionIndex = 0
     private var correctAnswers = 0
@@ -108,6 +123,8 @@ final class MovieQuizViewController: UIViewController {
         yesButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
         noButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
         
+           
+        
         let topStackViews = UIStackView(arrangedSubviews: [questionLabel, counterLabel])
         topStackViews.axis = .horizontal
         topStackViews.distribution = .equalSpacing
@@ -120,11 +137,14 @@ final class MovieQuizViewController: UIViewController {
         buttonStackViews.alignment = .fill
         buttonStackViews.spacing = 20
         buttonStackViews.translatesAutoresizingMaskIntoConstraints = false
+        //
+        buttonStackViews.setContentCompressionResistancePriority(.init(1000), for: .vertical)
+        
         
         
         let mainStackViews = UIStackView(arrangedSubviews: [topStackViews, imageView, textLabel, buttonStackViews])
         mainStackViews.axis = .vertical
-        mainStackViews.distribution = .fill
+        mainStackViews.distribution = .equalSpacing
         mainStackViews.alignment = .fill
         mainStackViews.spacing = 20
         mainStackViews.translatesAutoresizingMaskIntoConstraints = false
@@ -135,15 +155,16 @@ final class MovieQuizViewController: UIViewController {
         NSLayoutConstraint.activate([
             mainStackViews.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             mainStackViews.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            mainStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0),
+            mainStackViews.bottomAnchor.constraint(equalTo: buttonStackViews.bottomAnchor, constant: 0),
             mainStackViews.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             
             imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 3.0 / 2.0),
                         
             buttonStackViews.heightAnchor.constraint(equalToConstant: 60),
-            topStackViews.heightAnchor.constraint(equalToConstant: 20)
+            topStackViews.heightAnchor.constraint(equalToConstant: 20),
+            buttonStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0)
+            
         ])
-        
         
         
     }
