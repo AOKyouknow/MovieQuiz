@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController {
+final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
     
     // MARK: - UI Elements
     //постер
@@ -91,27 +91,47 @@ final class MovieQuizViewController: UIViewController {
         return button
     }()
     
-    
     // MARK: - Properties
     private var currentQuestionIndex = 0
     private var correctAnswers = 0
-    //MARK: - Data
-    private let questions = MovieQuizViewController.questions
+    private let questionsAmount = 10
+    private var currentQuestion: QuizQuestion?
+    
+    private var questionFactory: QuestionFactoryProtocol?
+    //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
+    
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         
-        let currentQuestion = questions[currentQuestionIndex]
-        let resultOfConvert = convert(model: currentQuestion)
-        show(quiz: resultOfConvert)
+        //инъекция через свойство
+        let questionFactory = QuestionFactory()
+        questionFactory.delegate = self
+        self.questionFactory = questionFactory
+        questionFactory.requestNextQuestion()
+    }
+    
+    
+    //MARK: - QuestionFactoryDelegate
+    func didReceiveNextQuestion(question: QuizQuestion?) {
+        
+        guard let question = question else { return }
+        currentQuestion = question
+        let viewModel = convert(model: question)
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.show(quiz: viewModel)
+        }
     }
     
     // MARK: - Actions
     //обрабатывает нажатие
     @objc private func buttonTapped(_ sender: UIButton) {
         let givenAnswer = sender == yesButton
-        let currentQuestion = questions[currentQuestionIndex]
+        guard let currentQuestion = currentQuestion else {
+            return
+        }
         showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
     }
     
@@ -122,9 +142,7 @@ final class MovieQuizViewController: UIViewController {
         
         yesButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
         noButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
-        
-           
-        
+                
         let topStackViews = UIStackView(arrangedSubviews: [questionLabel, counterLabel])
         topStackViews.axis = .horizontal
         topStackViews.distribution = .equalSpacing
@@ -137,21 +155,17 @@ final class MovieQuizViewController: UIViewController {
         buttonStackViews.alignment = .fill
         buttonStackViews.spacing = 20
         buttonStackViews.translatesAutoresizingMaskIntoConstraints = false
-        //
         buttonStackViews.setContentCompressionResistancePriority(.init(1000), for: .vertical)
-        
-        
-        
+              
         let mainStackViews = UIStackView(arrangedSubviews: [topStackViews, imageView, textLabel, buttonStackViews])
         mainStackViews.axis = .vertical
         mainStackViews.distribution = .equalSpacing
         mainStackViews.alignment = .fill
         mainStackViews.spacing = 20
         mainStackViews.translatesAutoresizingMaskIntoConstraints = false
-               
-        view.addSubview(mainStackViews)
         
-       
+        view.addSubview(mainStackViews)
+                
         NSLayoutConstraint.activate([
             mainStackViews.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             mainStackViews.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
@@ -159,23 +173,20 @@ final class MovieQuizViewController: UIViewController {
             mainStackViews.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
             
             imageView.heightAnchor.constraint(equalTo: imageView.widthAnchor, multiplier: 3.0 / 2.0),
-                        
+            
             buttonStackViews.heightAnchor.constraint(equalToConstant: 60),
             topStackViews.heightAnchor.constraint(equalToConstant: 20),
             buttonStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0)
-            
         ])
-        
-        
     }
-     
+    
     //создаёт модель вью из вопроса
     private func convert(model: QuizQuestion) -> QuizStepViewModel{
         let image = UIImage(named: model.image) ?? UIImage()
         return QuizStepViewModel(
             image: image,
             question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questions.count)"
+            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
         )
     }
     
@@ -200,24 +211,24 @@ final class MovieQuizViewController: UIViewController {
         imageView.layer.cornerRadius = 20
         imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
+            guard let self = self else { return }
             self.showNextQuestionOrResults()
         }
     }
     
     //переключает следующий вопрос или вызывает алерт
     private func showNextQuestionOrResults(){
-        if currentQuestionIndex == questions.count - 1 {
+        if currentQuestionIndex == questionsAmount - 1 {
+            let text = correctAnswers == questionsAmount ? "Поздравляем! Вы ответили на 10 из 10!" : "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
             let viewModel = QuizResultsViewModel(
                 title: "Этот раунд окончен!",
-                text: "Ваш результат \(correctAnswers)/\(questions.count)!",
+                text: text,
                 buttonText: "Сыграть ещё раз")
             show(quiz: viewModel)
         } else {
             currentQuestionIndex += 1
-            let nextQuestion = questions[currentQuestionIndex]
-            let viewModel = convert(model: nextQuestion)
-            show(quiz: viewModel)
+            questionFactory?.requestNextQuestion()
             buttonEnabled(isEnabled: true)
         }
     }
@@ -226,104 +237,32 @@ final class MovieQuizViewController: UIViewController {
     private func show(quiz result: QuizResultsViewModel){
         let alert = UIAlertController(title: result.title, message: result.text, preferredStyle: .alert)
         let action = UIAlertAction(title: result.buttonText, style: .default){
-            _ in
-            self.correctAnswers = 0
-            self.currentQuestionIndex = 0
+            [weak self] _ in
             
-            let firstQuestion = self.questions[self.currentQuestionIndex]
-            let viewModel = self.convert(model: firstQuestion)
-            self.show(quiz: viewModel)
-            self.buttonEnabled(isEnabled: true)
+            guard let self = self else { return }
+            
+            correctAnswers = 0
+            currentQuestionIndex = 0 // ?????
+            
+            questionFactory?.requestNextQuestion()
+            buttonEnabled(isEnabled: true)
+                        
         }
         alert.addAction(action)
         self.present(alert, animated: true)
     }
-        
+    
     //блокирует кнопки
     private func buttonEnabled(isEnabled: Bool){
         yesButton.isEnabled = isEnabled
         noButton.isEnabled = isEnabled
     }
-        
-    // MARK: - Models
-    //структура с вопросами. Чтобы вынести в расширение пришлось убрать private
-    struct QuizQuestion {
-        //строка с названием фильма
-        let image: String
-        //строка с вопросом о рейтинге фильма
-        let text: String
-        //булево значение - результат ответа на вопрос
-        let correctAnswer: Bool
-    }
-    
-    //структура для создания вью вопроса
-    private struct QuizStepViewModel{
-        let image: UIImage
-        let question: String
-        let questionNumber: String
-    }
-    
-    //структура для создания вью результата
-    private struct QuizResultsViewModel{
-        let title: String
-        let text: String
-        let buttonText: String
-    }
-        
 }
-
-extension MovieQuizViewController {
-    //массив с вопросами
-    static let questions: [QuizQuestion] = [
-        QuizQuestion(
-            image: "The Godfather",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "The Dark Knight",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "Kill Bill",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "The Avengers",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "Deadpool",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "The Green Knight",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "Old",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "The Ice Age Adventures of Buck Wild",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "Tesla",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true),
-        QuizQuestion(
-            image: "Vivarium",
-            text: "Рейтинг этого фильма больше чем 6?",
-            correctAnswer: true)
-    ]
-}
-
 // MARK: - Preview
 struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> MovieQuizViewController {
         MovieQuizViewController()
     }
-
     func updateUIViewController(_ uiViewController: MovieQuizViewController, context: Context) {}
 }
 
