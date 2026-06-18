@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
+final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, AlertDelegate {
     
     // MARK: - UI Elements
     //постер
@@ -92,26 +92,32 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
     }()
     
     // MARK: - Properties
-    private var currentQuestionIndex = 0
-    private var correctAnswers = 0
+    var currentQuestionIndex = 0
+    var correctAnswers = 0
     private let questionsAmount = 10
     private var currentQuestion: QuizQuestion?
     
     private var questionFactory: QuestionFactoryProtocol?
     //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
+    private var alertPresenter = AlertPresenter()
+    
+    private var staticService: StatisticServiceProtocol?
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         
+        alertPresenter.delegate = self //
+        
         //инъекция через свойство
         let questionFactory = QuestionFactory()
-        questionFactory.delegate = self
+        questionFactory.delegate = self //
         self.questionFactory = questionFactory
         questionFactory.requestNextQuestion()
+        
+        staticService = StaticService()
     }
-    
     
     //MARK: - QuestionFactoryDelegate
     func didReceiveNextQuestion(question: QuizQuestion?) {
@@ -142,7 +148,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
         
         yesButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
         noButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
-                
+        
         let topStackViews = UIStackView(arrangedSubviews: [questionLabel, counterLabel])
         topStackViews.axis = .horizontal
         topStackViews.distribution = .equalSpacing
@@ -156,7 +162,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
         buttonStackViews.spacing = 20
         buttonStackViews.translatesAutoresizingMaskIntoConstraints = false
         buttonStackViews.setContentCompressionResistancePriority(.init(1000), for: .vertical)
-              
+        
         let mainStackViews = UIStackView(arrangedSubviews: [topStackViews, imageView, textLabel, buttonStackViews])
         mainStackViews.axis = .vertical
         mainStackViews.distribution = .equalSpacing
@@ -165,7 +171,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
         mainStackViews.translatesAutoresizingMaskIntoConstraints = false
         
         view.addSubview(mainStackViews)
-                
+        
         NSLayoutConstraint.activate([
             mainStackViews.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             mainStackViews.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
@@ -178,6 +184,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
             topStackViews.heightAnchor.constraint(equalToConstant: 20),
             buttonStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0)
         ])
+    }
+    
+    //блокирует кнопки
+    private func buttonEnabled(isEnabled: Bool){
+        yesButton.isEnabled = isEnabled
+        noButton.isEnabled = isEnabled
     }
     
     //создаёт модель вью из вопроса
@@ -220,12 +232,31 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
     //переключает следующий вопрос или вызывает алерт
     private func showNextQuestionOrResults(){
         if currentQuestionIndex == questionsAmount - 1 {
-            let text = correctAnswers == questionsAmount ? "Поздравляем! Вы ответили на 10 из 10!" : "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
-            let viewModel = QuizResultsViewModel(
+            staticService?.store(correct: correctAnswers, total: questionsAmount)
+                        
+            let text = """
+            Ваш результат: \(correctAnswers)/10\n
+            Количество сыгранных квизов: \(staticService?.gamesCount ?? 0)\n
+            Рекорд: \(staticService?.bestGame.correct ?? 0)/10 (\(staticService?.bestGame.date.dateTimeString ?? "Рекорд не установлен:)"))\n
+            Средняя точность: \(String(format: "%.2f", staticService?.totalAccuracy ?? 0))%
+            """
+            
+            let alertModel = AlertModel(
                 title: "Этот раунд окончен!",
-                text: text,
-                buttonText: "Сыграть ещё раз")
-            show(quiz: viewModel)
+                message: text,
+                buttonText: "Сыграть ещё раз!",
+                completion: {[weak self] in
+                    
+                    guard let self = self else {return}
+                    
+                    self.correctAnswers = 0
+                    self.currentQuestionIndex = 0
+                    self.questionFactory?.requestNextQuestion()
+                    self.buttonEnabled(isEnabled: true)
+                }
+            )
+            alertPresenter.show(quiz: alertModel)
+            
         } else {
             currentQuestionIndex += 1
             questionFactory?.requestNextQuestion()
@@ -233,30 +264,10 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate {
         }
     }
     
-    //функция показа алерта
-    private func show(quiz result: QuizResultsViewModel){
-        let alert = UIAlertController(title: result.title, message: result.text, preferredStyle: .alert)
-        let action = UIAlertAction(title: result.buttonText, style: .default){
-            [weak self] _ in
-            
-            guard let self = self else { return }
-            
-            correctAnswers = 0
-            currentQuestionIndex = 0 // ?????
-            
-            questionFactory?.requestNextQuestion()
-            buttonEnabled(isEnabled: true)
-                        
-        }
-        alert.addAction(action)
-        self.present(alert, animated: true)
+    func showAlert(alertController: UIAlertController) {
+        self.present(alertController, animated: true)
     }
     
-    //блокирует кнопки
-    private func buttonEnabled(isEnabled: Bool){
-        yesButton.isEnabled = isEnabled
-        noButton.isEnabled = isEnabled
-    }
 }
 // MARK: - Preview
 struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {

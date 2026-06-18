@@ -7,8 +7,6 @@
 
 import Foundation
 
-protocol QuestionFactoryDelgate: AnyObject {
-    
+protocol QuestionFactoryDelgate: AnyObject {    
     func didReceiveNextQuestion(question: QuizQuestion?)
-    
 }

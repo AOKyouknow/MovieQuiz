@@ -9,10 +9,6 @@ import Foundation
 
 class QuestionFactory: QuestionFactoryProtocol {
     
-    init(delegate: QuestionFactoryDelgate? = nil) {
-        self.delegate = delegate
-    }
-    
     weak var delegate: QuestionFactoryDelgate?
     
     private let questions: [QuizQuestion] = [
