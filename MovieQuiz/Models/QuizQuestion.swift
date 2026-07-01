@@ -9,7 +9,7 @@ import Foundation
 //структура с вопросами.
  struct QuizQuestion {
     //строка с названием фильма
-    let image: String
+    let image: Data
     //строка с вопросом о рейтинге фильма
     let text: String
     //булево значение - результат ответа на вопрос
