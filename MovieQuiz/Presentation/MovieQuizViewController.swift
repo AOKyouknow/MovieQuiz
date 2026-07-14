@@ -24,6 +24,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         image.translatesAutoresizingMaskIntoConstraints = false
         //
         image.setContentCompressionResistancePriority(.init(750), for: .vertical)
+        image.accessibilityIdentifier = "imageView"
+                
         return image
     }()
     
@@ -53,6 +55,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         label.translatesAutoresizingMaskIntoConstraints = false
         //
         label.setContentCompressionResistancePriority(.init(250), for: .vertical)
+        label.accessibilityIdentifier = "counterLabel"
         
         return label
     }()
@@ -83,6 +86,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         button.translatesAutoresizingMaskIntoConstraints = false
         //
         button.setContentCompressionResistancePriority(.init(1000), for: .vertical)
+        button.accessibilityIdentifier = "yesButton"
         
         return button
     }()
@@ -98,6 +102,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         button.translatesAutoresizingMaskIntoConstraints = false
         //
         button.setContentCompressionResistancePriority(.init(1000), for: .vertical)
+        button.accessibilityIdentifier = "noButton"
+        
         return button
     }()
     

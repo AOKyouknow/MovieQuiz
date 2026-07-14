@@ -8,7 +8,7 @@
 import Foundation
 
 struct MostPopularMovies: Codable {
-    let errorMessages: String
+    let errorMessage: String
     let items: [MostPopularMovie]
 }
 
