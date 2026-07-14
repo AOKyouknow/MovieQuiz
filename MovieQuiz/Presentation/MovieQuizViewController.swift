@@ -1,9 +1,19 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, AlertDelegate {
+final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, AlertDelegate {
     
     // MARK: - UI Elements
+    
+    //индикатор загрузки
+    private let activityIndicator: UIActivityIndicatorView = {
+        let indicator = UIActivityIndicatorView()
+        indicator.color = .white
+        indicator.hidesWhenStopped = true
+        indicator.translatesAutoresizingMaskIntoConstraints = false
+        return indicator
+    }()
+    
     //постер
     private let imageView: UIImageView = {
         let image = UIImageView()
@@ -111,10 +121,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, A
         alertPresenter.delegate = self //
         
         //инъекция через свойство
-        let questionFactory = QuestionFactory()
-        questionFactory.delegate = self //
+        let questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
+        //questionFactory.delegate = self //
         self.questionFactory = questionFactory
-        questionFactory.requestNextQuestion()
+        //questionFactory.requestNextQuestion()
+        showLoadingIndicator()
+        questionFactory.loadData()
         
         staticService = StaticService()
     }
@@ -171,6 +183,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, A
         mainStackViews.translatesAutoresizingMaskIntoConstraints = false
         
         view.addSubview(mainStackViews)
+        imageView.addSubview(activityIndicator)
         
         NSLayoutConstraint.activate([
             mainStackViews.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
@@ -182,7 +195,10 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, A
             
             buttonStackViews.heightAnchor.constraint(equalToConstant: 60),
             topStackViews.heightAnchor.constraint(equalToConstant: 20),
-            buttonStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0)
+            buttonStackViews.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 0),
+            
+            activityIndicator.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
+            activityIndicator.centerYAnchor.constraint(equalTo: imageView.centerYAnchor)
         ])
     }
     
@@ -193,10 +209,10 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, A
     }
     
     //создаёт модель вью из вопроса
-    private func convert(model: QuizQuestion) -> QuizStepViewModel{
-        let image = UIImage(named: model.image) ?? UIImage()
+    private func convert(model: QuizQuestion) -> QuizStepViewModel{                
+        //let image = UIImage(named: model.image) ?? UIImage()
         return QuizStepViewModel(
-            image: image,
+            image: UIImage(data: model.image) ?? UIImage(),
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
         )
@@ -255,7 +271,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, A
                     self.buttonEnabled(isEnabled: true)
                 }
             )
-            alertPresenter.show(quiz: alertModel)
+            alertPresenter.show(quiz: alertModel) // создаёт и ВЫЗЫВАЕТ ф-ю показа алерта
             
         } else {
             currentQuestionIndex += 1
@@ -264,10 +280,44 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelgate, A
         }
     }
     
-    func showAlert(alertController: UIAlertController) {
+    func showAlert(alertController: UIAlertController) { // ОБЪЯВЛЯЕТ ф-ю показа. только показывает алерт именно на этом экране.
         self.present(alertController, animated: true)
     }
     
+    func showNetworkError(message: String) {
+        hideLoadingIndicator()
+        /* У этого алерта должна быть кнопка «Попробовать ещё раз», по нажатию на которую мы будем пытаться снова загрузить данные.
+         Заголовком алерта пусть будет просто «Ошибка».*/
+        let alertNetworkErrorModel = AlertModel(
+            title: "Ошибка",
+            message: message,
+            buttonText: "Попробовать ещё раз",
+            completion: {[weak self] in
+                guard let self = self else { return }
+                self.correctAnswers = 0
+                self.currentQuestionIndex = 0
+                self.questionFactory?.requestNextQuestion()
+                self.buttonEnabled(isEnabled: true)
+            }
+        )
+        alertPresenter.show(quiz: alertNetworkErrorModel)
+    }
+    
+    func hideLoadingIndicator() {
+        activityIndicator.stopAnimating()
+    }
+    func showLoadingIndicator() {
+        activityIndicator.startAnimating()
+    }
+    
+    func didLoadDataFromServer() {
+        activityIndicator.isHidden = true
+        questionFactory?.requestNextQuestion()
+    }
+    
+    func didFailToLoadData(with error: Error) {
+        showNetworkError(message: error.localizedDescription)
+    }
 }
 // MARK: - Preview
 struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {
