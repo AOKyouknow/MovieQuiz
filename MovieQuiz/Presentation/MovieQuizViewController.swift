@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
+final class MovieQuizViewController: UIViewController {
     
     // MARK: - UI Elements
     
@@ -109,16 +109,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     // MARK: - Properties
     
-    var correctAnswers = 0
     
-    
-    private var questionFactory: QuestionFactoryProtocol?
-    //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
     private var alertPresenter = AlertPresenter()
     
     private var statisticService: StatisticServiceProtocol?
     
-    private let presenter = MovieQuizPresenter()
+    private var presenter: MovieQuizPresenter!
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -126,30 +122,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         setupUI()
         
         
-        //инъекция через свойство
-        let questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
-        //questionFactory.delegate = self //
-        self.questionFactory = questionFactory
-        //questionFactory.requestNextQuestion()
+        
         showLoadingIndicator()
-        questionFactory.loadData()
         
         statisticService = StaticService()
         
-        presenter.viewController = self
+        presenter = MovieQuizPresenter(viewController: self)
+        
     }
     
-    //MARK: - QuestionFactoryDelegate
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        
-        guard let question = question else { return }
-        presenter.currentQuestion = question
-        let viewModel = presenter.convert(model: question)
-        
-        DispatchQueue.main.async { [weak self] in
-            self?.show(quiz: viewModel)
-        }
-    }
+    
     
     // MARK: - Actions
     //обрабатывает нажатие
@@ -166,8 +148,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     private func setupUI(){
         view.backgroundColor = UIColor(named: "YP Black")
         
-        yesButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
-        noButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
+        yesButton.addTarget(self, action: #selector(presenter.buttonTapped), for: .touchUpInside)
+        noButton.addTarget(self, action: #selector(presenter.buttonTapped), for: .touchUpInside)
         
         let topStackViews = UIStackView(arrangedSubviews: [questionLabel, counterLabel])
         topStackViews.axis = .horizontal
@@ -211,7 +193,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     //блокирует кнопки
-    private func buttonEnabled(isEnabled: Bool){
+    func buttonEnabled(isEnabled: Bool){
         yesButton.isEnabled = isEnabled
         noButton.isEnabled = isEnabled
     }
@@ -220,7 +202,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     
     //обновляет элементы согласно структуре
-    private func show(quiz step: QuizStepViewModel) {
+    func show(quiz step: QuizStepViewModel) {
         imageView.image = UIImage(data: step.image) ?? UIImage()
         imageView.layer.borderWidth = 0
         imageView.layer.borderColor = UIColor.clear.cgColor
@@ -229,16 +211,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         textLabel.text = step.question
         counterLabel.text = step.questionNumber
     }
-    private func show(quiz result: QuizResultsViewModel) {
+    func show(quiz result: QuizResultsViewModel) {
         var message = result.text// если статистики нет
         
         if let statisticService = statisticService {
-            statisticService.store(correct: correctAnswers, total: presenter.questionsAmount)
+            statisticService.store(correct: presenter.correctAnswers, total: presenter.questionsAmount)
             
             let bestGame = statisticService.bestGame
             
             let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
-            let currentGameResultLine = "Ваш результат: \(correctAnswers)/\(presenter.questionsAmount)"
+            let currentGameResultLine = "Ваш результат: \(presenter.correctAnswers)/\(presenter.questionsAmount)"
             let bestGameInfoLine = "Рекорд: \(bestGame.correct)/\(bestGame.total) (\(bestGame.date.dateTimeString))"
             let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
             
@@ -255,11 +237,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             buttonText: result.buttonText) {
               [weak self] in
                 guard let self = self else { return }
-                self.correctAnswers = 0
-                presenter.resetQuestionIndex()
-                
-                
-                self.questionFactory?.requestNextQuestion()
+                presenter.restarGame()
             }
             
         alertPresenter.show(in: self, model: model)
@@ -270,7 +248,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     func showAnswerResult(isCorrect: Bool){
         buttonEnabled(isEnabled: false)
         if isCorrect {
-            correctAnswers += 1
+            presenter.switchToNextQuestion()
         }
         imageView.layer.masksToBounds = true
         imageView.layer.borderWidth = 8
@@ -279,29 +257,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
             guard let self = self else { return }
-            self.showNextQuestionOrResults()
+            presenter.showNextQuestionOrResults()
+            //обрати внимание!!!!!self.presenter.questionFactory = self.questionFactor. всё нормально, это удалили позднее)
         }
     }
     
-    //переключает следующий вопрос или вызывает алерт
-    private func showNextQuestionOrResults(){
-        if presenter.isLastQuestion() {
-            statisticService?.store(correct: correctAnswers, total: presenter.questionsAmount)
-                        
-            let text = "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
-            
-            let viewModel = QuizResultsViewModel(
-                title: "Этот раунд окончен!",
-                text: text,
-                buttonText: "Сыграть ещё раз!")
-            
-            show(quiz: viewModel)
-        } else {
-            presenter.switchToNextQuestion()
-            questionFactory?.requestNextQuestion()
-            buttonEnabled(isEnabled: true)
-        }
-    }
+    
     
     
     func showNetworkError(message: String) {
@@ -314,9 +275,9 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             buttonText: "Попробовать ещё раз",
             completion: {[weak self] in
                 guard let self = self else { return }
-                self.correctAnswers = 0
-                presenter.resetQuestionIndex()
-                self.questionFactory?.requestNextQuestion()
+                
+                presenter.restarGame()
+                
                 self.buttonEnabled(isEnabled: true)
             }
         )
@@ -330,14 +291,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         activityIndicator.startAnimating()
     }
     
-    func didLoadDataFromServer() {
-        activityIndicator.isHidden = true
-        questionFactory?.requestNextQuestion()
-    }
     
-    func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription)
-    }
     
     //MARK: - ПЕРЕНЕСЕНО!!!!
     
@@ -355,7 +309,60 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
 //    var currentQuestionIndex = 0
 //    private var currentQuestion: QuizQuestion?
     
+//    //MARK: - QuestionFactoryDelegate
+//    func didReceiveNextQuestion(question: QuizQuestion?) {
+//        
+//        guard let question = question else { return }
+//        presenter.currentQuestion = question
+//        let viewModel = presenter.convert(model: question)
+//        
+//        DispatchQueue.main.async { [weak self] in
+//            self?.show(quiz: viewModel)
+//        }
+//    }
     
+//    //переключает следующий вопрос или вызывает алерт
+//    private func showNextQuestionOrResults(){
+//        if presenter.isLastQuestion() {
+//            statisticService?.store(correct: correctAnswers, total: presenter.questionsAmount)
+//                        
+//            let text = "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
+//            
+//            let viewModel = QuizResultsViewModel(
+//                title: "Этот раунд окончен!",
+//                text: text,
+//                buttonText: "Сыграть ещё раз!")
+//            
+//            show(quiz: viewModel)
+//        } else {
+//            presenter.switchToNextQuestion()
+//            questionFactory?.requestNextQuestion()
+//            buttonEnabled(isEnabled: true)
+//        }
+//    }
+    
+//    var correctAnswers = 0
+//    
+//    
+//    private var questionFactory: QuestionFactoryProtocol?
+//    //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
+    
+//    questionFactory.loadData()
+//    //инъекция через свойство
+//    //let questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
+//    //questionFactory.delegate = self //
+//    presenter.questionFactory = questionFactory
+//    //questionFactory.requestNextQuestion()
+    
+    
+//    func didLoadDataFromServer() {
+//        activityIndicator.isHidden = true
+//        presenter.questionFactory?.requestNextQuestion()
+//    }
+//    
+//    func didFailToLoadData(with error: Error) {
+//        showNetworkError(message: error.localizedDescription)
+//    }
     
 }
 // MARK: - Preview
