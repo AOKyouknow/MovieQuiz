@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, AlertDelegate {
+final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     
     // MARK: - UI Elements
     
@@ -117,14 +117,13 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
     //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
     private var alertPresenter = AlertPresenter()
     
-    private var staticService: StatisticServiceProtocol?
+    private var statisticService: StatisticServiceProtocol?
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
         
-        alertPresenter.delegate = self //
         
         //инъекция через свойство
         let questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
@@ -134,7 +133,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         showLoadingIndicator()
         questionFactory.loadData()
         
-        staticService = StaticService()
+        statisticService = StaticService()
     }
     
     //MARK: - QuestionFactoryDelegate
@@ -225,13 +224,48 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
     }
     
     //обновляет элементы согласно структуре
-    private func show(quiz step: QuizStepViewModel){
+    private func show(quiz step: QuizStepViewModel) {
         imageView.image = step.image
         textLabel.text = step.question
         counterLabel.text = step.questionNumber
         imageView.layer.borderWidth = 0
         imageView.layer.borderColor = nil
         imageView.layer.cornerRadius = 20 // добавлено скругление рамки
+    }
+    private func show(quiz result: QuizResultsViewModel) {
+        var message = result.text// если статистики нет
+        
+        if let statisticService = statisticService {
+            statisticService.store(correct: correctAnswers, total: questionsAmount)
+            
+            let bestGame = statisticService.bestGame
+            
+            let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
+            let currentGameResultLine = "Ваш результат: \(correctAnswers)/\(questionsAmount)"
+            let bestGameInfoLine = "Рекорд: \(bestGame.correct)/\(bestGame.total) (\(bestGame.date.dateTimeString))"
+            let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
+            
+            let resultMessage = [
+                        currentGameResultLine, totalPlaysCountLine, bestGameInfoLine, averageAccuracyLine
+                    ].joined(separator: "\n")
+
+                    message = resultMessage
+        }
+        
+        let model = AlertModel(
+            title: result.title,
+            message: message,
+            buttonText: result.buttonText) {
+              [weak self] in
+                guard let self = self else { return }
+                self.correctAnswers = 0
+                self.currentQuestionIndex = 0
+                
+                self.questionFactory?.requestNextQuestion()
+            }
+            
+        alertPresenter.show(in: self, model: model)
+        
     }
     
     //красит рамку в зависимости от правильности ответа
@@ -254,31 +288,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
     //переключает следующий вопрос или вызывает алерт
     private func showNextQuestionOrResults(){
         if currentQuestionIndex == questionsAmount - 1 {
-            staticService?.store(correct: correctAnswers, total: questionsAmount)
+            statisticService?.store(correct: correctAnswers, total: questionsAmount)
                         
-            let text = """
-            Ваш результат: \(correctAnswers)/10\n
-            Количество сыгранных квизов: \(staticService?.gamesCount ?? 0)\n
-            Рекорд: \(staticService?.bestGame.correct ?? 0)/10 (\(staticService?.bestGame.date.dateTimeString ?? "Рекорд не установлен:)"))\n
-            Средняя точность: \(String(format: "%.2f", staticService?.totalAccuracy ?? 0))%
-            """
+            let text = "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
             
-            let alertModel = AlertModel(
+            let viewModel = QuizResultsViewModel(
                 title: "Этот раунд окончен!",
-                message: text,
-                buttonText: "Сыграть ещё раз!",
-                completion: {[weak self] in
-                    
-                    guard let self = self else {return}
-                    
-                    self.correctAnswers = 0
-                    self.currentQuestionIndex = 0
-                    self.questionFactory?.requestNextQuestion()
-                    self.buttonEnabled(isEnabled: true)
-                }
-            )
-            alertPresenter.show(quiz: alertModel) // создаёт и ВЫЗЫВАЕТ ф-ю показа алерта
+                text: text,
+                buttonText: "Сыграть ещё раз!")
             
+            show(quiz: viewModel)
         } else {
             currentQuestionIndex += 1
             questionFactory?.requestNextQuestion()
@@ -286,9 +305,6 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         }
     }
     
-    func showAlert(alertController: UIAlertController) { // ОБЪЯВЛЯЕТ ф-ю показа. только показывает алерт именно на этом экране.
-        self.present(alertController, animated: true)
-    }
     
     func showNetworkError(message: String) {
         hideLoadingIndicator()
@@ -306,7 +322,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
                 self.buttonEnabled(isEnabled: true)
             }
         )
-        alertPresenter.show(quiz: alertNetworkErrorModel)
+        alertPresenter.show(in: self, model: alertNetworkErrorModel)
     }
     
     func hideLoadingIndicator() {
