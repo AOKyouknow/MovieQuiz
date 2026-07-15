@@ -120,9 +120,7 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        
-        
-        
+                
         showLoadingIndicator()
         
         statisticService = StatisticService()
@@ -134,14 +132,7 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     
     
     // MARK: - Actions
-    //обрабатывает нажатие
-//    @objc private func buttonTapped(_ sender: UIButton) {
-//        let givenAnswer = sender == yesButton
-//        guard let currentQuestion = currentQuestion else {
-//            return
-//        }
-//        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
-//    }
+    
     @objc func buttonTapped(_ sender: UIButton) {
         let isYesAnswer = sender == yesButton
         
@@ -205,8 +196,6 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
     }
     
     
-    
-    
     //обновляет элементы согласно структуре
     func show(quiz step: QuizStepViewModel) {
         imageView.image = UIImage(data: step.image) ?? UIImage()
@@ -236,15 +225,9 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
         
     }
     
-   
-    
-    
-    
-    
+       
     func showNetworkError(message: String) {
         hideLoadingIndicator()
-        /* У этого алерта должна быть кнопка «Попробовать ещё раз», по нажатию на которую мы будем пытаться снова загрузить данные.
-         Заголовком алерта пусть будет просто «Ошибка».*/
         let alertNetworkErrorModel = AlertModel(
             title: "Ошибка",
             message: message,
@@ -273,94 +256,6 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
             imageView.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
         }
     
-    //MARK: - ПЕРЕНЕСЕНО!!!!
-    
-    //создаёт модель вью из вопроса
-//    private func convert(model: QuizQuestion) -> QuizStepViewModel{
-//        //let image = UIImage(named: model.image) ?? UIImage()
-//        return QuizStepViewModel(
-//            image: model.image,
-//            question: model.text,
-//            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
-//        )
-//    }
-    
-//    private let questionsAmount = 10
-//    var currentQuestionIndex = 0
-//    private var currentQuestion: QuizQuestion?
-    
-//    //MARK: - QuestionFactoryDelegate
-//    func didReceiveNextQuestion(question: QuizQuestion?) {
-//        
-//        guard let question = question else { return }
-//        presenter.currentQuestion = question
-//        let viewModel = presenter.convert(model: question)
-//        
-//        DispatchQueue.main.async { [weak self] in
-//            self?.show(quiz: viewModel)
-//        }
-//    }
-    
-//    //переключает следующий вопрос или вызывает алерт
-//    private func showNextQuestionOrResults(){
-//        if presenter.isLastQuestion() {
-//            statisticService?.store(correct: correctAnswers, total: presenter.questionsAmount)
-//                        
-//            let text = "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
-//            
-//            let viewModel = QuizResultsViewModel(
-//                title: "Этот раунд окончен!",
-//                text: text,
-//                buttonText: "Сыграть ещё раз!")
-//            
-//            show(quiz: viewModel)
-//        } else {
-//            presenter.switchToNextQuestion()
-//            questionFactory?.requestNextQuestion()
-//            buttonEnabled(isEnabled: true)
-//        }
-//    }
-    
-//    var correctAnswers = 0
-//    
-//    
-//    private var questionFactory: QuestionFactoryProtocol?
-//    //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
-    
-//    questionFactory.loadData()
-//    //инъекция через свойство
-//    //let questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
-//    //questionFactory.delegate = self //
-//    presenter.questionFactory = questionFactory
-//    //questionFactory.requestNextQuestion()
-    
-    
-//    func didLoadDataFromServer() {
-//        activityIndicator.isHidden = true
-//        presenter.questionFactory?.requestNextQuestion()
-//    }
-//    
-//    func didFailToLoadData(with error: Error) {
-//        showNetworkError(message: error.localizedDescription)
-//    }
-    
-//    //красит рамку в зависимости от правильности ответа
-//    func showAnswerResult(isCorrect: Bool){
-//        buttonEnabled(isEnabled: false)
-//        if isCorrect {
-//            presenter.switchToNextQuestion()
-//        }
-//        imageView.layer.masksToBounds = true
-//        imageView.layer.borderWidth = 8
-//        imageView.layer.cornerRadius = 20
-//        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
-//        
-//        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
-//            guard let self = self else { return }
-//            presenter.showNextQuestionOrResults()
-//            //обрати внимание!!!!!self.presenter.questionFactory = self.questionFactor. всё нормально, это удалили позднее)
-//        }
-//    }
 }
 // MARK: - Preview
 struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {

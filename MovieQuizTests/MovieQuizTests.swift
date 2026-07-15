@@ -29,9 +29,6 @@ struct ArithmeticOperations {
 }
 
 
-
-
-
 final class MovieQuizTests: XCTestCase {
     
     func testAddition() throws {
@@ -45,13 +42,11 @@ final class MovieQuizTests: XCTestCase {
         
         arithmeticsOperations.addition(num1: num1, num2: num2) {
             result in
-            
-            
+                        
             //Then
-            XCTAssertEqual(result, 3) // сравниваем результат выполнения функции и наши ожидания
-            //XCTAssertEqual, которая сравнивает два значения и маркирует тест как пройденный или как непройденный
-            expectation.fulfill() // NEW!!!
+            XCTAssertEqual(result, 3)
+            expectation.fulfill()
         }
-        waitForExpectations(timeout: 2) // NEW!!!
+        waitForExpectations(timeout: 2)
     }
 }

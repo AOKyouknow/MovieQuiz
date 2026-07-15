@@ -57,6 +57,5 @@ final class MovieQuizPresenterTests: XCTestCase {
         XCTAssertEqual(viewModel.question, "Question Text")
         XCTAssertEqual(viewModel.questionNumber, "1/10")
         XCTAssertNotNil(viewModel.image)
-        //XCTAssertEqual(viewControllerMock.lastStepModel?.image, emptyData)
     }
 }

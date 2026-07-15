@@ -10,13 +10,12 @@ import Foundation
 class MovieQuizPresenter: QuestionFactoryDelegate {
     
     //MARK: - Properties
-    private weak var viewController: MovieQuizViewControllerProtocol? // почему так, а не добавлением инициализатора () потому что слабая ссылка требует опционал же!!!!!!!! вспомнил!!!1
+    private weak var viewController: MovieQuizViewControllerProtocol?
     private var currentQuestion: QuizQuestion?
     private let questionsAmount: Int = 10
     private var currentQuestionIndex: Int = 0
     private var correctAnswers = 0
     private var questionFactory: QuestionFactoryProtocol?
-    //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
     private let statisticService: StatisticServiceProtocol!
     
     init(viewController: MovieQuizViewControllerProtocol) {
@@ -59,7 +58,7 @@ class MovieQuizPresenter: QuestionFactoryDelegate {
     
     //создаёт модель вью из вопроса
     func convert(model: QuizQuestion) -> QuizStepViewModel{
-        //let image = UIImage(named: model.image) ?? UIImage()
+        
         return QuizStepViewModel(
             image: model.image,
             question: model.text,
@@ -76,13 +75,11 @@ class MovieQuizPresenter: QuestionFactoryDelegate {
             correctAnswers += 1
         }
         
-        
-        viewController?.highlightImageBorder(isCorrectAnswer: isCorrect) // шаг 9 - непонятно. все эти параметры были в функции showAnswerResult, переместили их обратно в контроллер.
+        viewController?.highlightImageBorder(isCorrectAnswer: isCorrect)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
             guard let self = self else { return }
             self.proceedToNextQuestionOrResults()
-            //обрати внимание!!!!!self.presenter.questionFactory = self.questionFactor. всё нормально, это удалили позднее)
         }
     }
     

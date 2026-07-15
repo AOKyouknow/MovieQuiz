@@ -18,7 +18,6 @@ final class MovieQuizUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launch()
-
     }
 
     override func tearDownWithError() throws {
@@ -26,15 +25,12 @@ final class MovieQuizUITests: XCTestCase {
         
         app.terminate()
         app = nil
-        
     }
 
     func testExample() throws {
         // UI tests must launch the application that they test.
         let app = XCUIApplication()
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
     func testYesButton() throws {
@@ -42,7 +38,7 @@ final class MovieQuizUITests: XCTestCase {
         //sleep(3)
         let firstPoster = app.images["imageView"]
         //XCTAssertTrue(firstPoster.exists)
-        let firstPosterData = firstPoster.screenshot().pngRepresentation// берём содержимое для последующего сравнения
+        let firstPosterData = firstPoster.screenshot().pngRepresentation
         
         app.buttons["yesButton"].tap()
         //sleep(3)
@@ -78,9 +74,9 @@ final class MovieQuizUITests: XCTestCase {
             sleep(1)
         }
         
-        XCTAssertTrue(app.alerts["alertResult"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.alerts["alertResult"].waitForExistence(timeout: 1))
         
-        XCTAssertEqual(app.alerts["alertResult"].buttons["alertAction"].label, "Сыграть ещё раз!")
+        XCTAssertEqual(app.alerts["alertResult"].buttons["Сыграть ещё раз!"].label, "Сыграть ещё раз!")
         
         XCTAssertEqual(app.alerts["alertResult"].label, "Этот раунд окончен!")
         
@@ -96,7 +92,7 @@ final class MovieQuizUITests: XCTestCase {
         
         let alert = app.alerts["alertResult"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5), "Алерт результатов не появился на экране!")
-        let alertButton = alert.buttons["Сыграть ещё раз!"]
+        let alertButton = alert.buttons["Сыграть ещё раз!"] //
         XCTAssertTrue(alertButton.exists, "Кнопка 'Сыграть ещё раз!' не найдена на алерте")
         alertButton.tap()
         

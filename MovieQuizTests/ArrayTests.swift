@@ -6,10 +6,10 @@
 //
 
 import XCTest
-@testable import MovieQuiz // импортируем наше приложение для тестирования
+@testable import MovieQuiz
 
 class ArrayTests: XCTestCase {
-    func testGetValueInRange() throws { //на успешное взятие элемента по индексу
+    func testGetValueInRange() throws {
         //Given
         let array = [1,1,2,3,5]
         //When
