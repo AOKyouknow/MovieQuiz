@@ -224,6 +224,8 @@ final class MovieQuizViewController: UIViewController, MovieQuizViewControllerPr
             message: result.text,
             preferredStyle: .alert)
             
+        alert.view.accessibilityIdentifier = "alertResult"
+        
         let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
                 guard let self = self else { return }
                 presenter.restarGame()
