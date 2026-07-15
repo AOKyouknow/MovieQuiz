@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController {
+final class MovieQuizViewController: UIViewController, MovieQuizViewControllerProtocol {
     
     // MARK: - UI Elements
     
@@ -125,7 +125,7 @@ final class MovieQuizViewController: UIViewController {
         
         showLoadingIndicator()
         
-        statisticService = StaticService()
+        statisticService = StatisticService()
         
         presenter = MovieQuizPresenter(viewController: self)
         
@@ -142,14 +142,20 @@ final class MovieQuizViewController: UIViewController {
 //        }
 //        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
 //    }
+    @objc func buttonTapped(_ sender: UIButton) {
+        let isYesAnswer = sender == yesButton
+        
+        presenter.didAnswer(isYes: isYesAnswer)
+    }
+
     
     // MARK: - Private Methods
     
     private func setupUI(){
         view.backgroundColor = UIColor(named: "YP Black")
         
-        yesButton.addTarget(self, action: #selector(presenter.buttonTapped), for: .touchUpInside)
-        noButton.addTarget(self, action: #selector(presenter.buttonTapped), for: .touchUpInside)
+        yesButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
+        noButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
         
         let topStackViews = UIStackView(arrangedSubviews: [questionLabel, counterLabel])
         topStackViews.axis = .horizontal
@@ -212,55 +218,23 @@ final class MovieQuizViewController: UIViewController {
         counterLabel.text = step.questionNumber
     }
     func show(quiz result: QuizResultsViewModel) {
-        var message = result.text// если статистики нет
-        
-        if let statisticService = statisticService {
-            statisticService.store(correct: presenter.correctAnswers, total: presenter.questionsAmount)
-            
-            let bestGame = statisticService.bestGame
-            
-            let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
-            let currentGameResultLine = "Ваш результат: \(presenter.correctAnswers)/\(presenter.questionsAmount)"
-            let bestGameInfoLine = "Рекорд: \(bestGame.correct)/\(bestGame.total) (\(bestGame.date.dateTimeString))"
-            let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
-            
-            let resultMessage = [
-                        currentGameResultLine, totalPlaysCountLine, bestGameInfoLine, averageAccuracyLine
-                    ].joined(separator: "\n")
-
-                    message = resultMessage
-        }
-        
-        let model = AlertModel(
+                
+        let alert = UIAlertController(
             title: result.title,
-            message: message,
-            buttonText: result.buttonText) {
-              [weak self] in
+            message: result.text,
+            preferredStyle: .alert)
+            
+        let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
                 guard let self = self else { return }
                 presenter.restarGame()
             }
             
-        alertPresenter.show(in: self, model: model)
+        alert.addAction(action)
+        self.present(alert, animated: true, completion: nil)
         
     }
     
-    //красит рамку в зависимости от правильности ответа
-    func showAnswerResult(isCorrect: Bool){
-        buttonEnabled(isEnabled: false)
-        if isCorrect {
-            presenter.switchToNextQuestion()
-        }
-        imageView.layer.masksToBounds = true
-        imageView.layer.borderWidth = 8
-        imageView.layer.cornerRadius = 20
-        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
-            guard let self = self else { return }
-            presenter.showNextQuestionOrResults()
-            //обрати внимание!!!!!self.presenter.questionFactory = self.questionFactor. всё нормально, это удалили позднее)
-        }
-    }
+   
     
     
     
@@ -291,7 +265,11 @@ final class MovieQuizViewController: UIViewController {
         activityIndicator.startAnimating()
     }
     
-    
+    func highlightImageBorder(isCorrectAnswer: Bool) {
+            imageView.layer.masksToBounds = true
+            imageView.layer.borderWidth = 8
+            imageView.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+        }
     
     //MARK: - ПЕРЕНЕСЕНО!!!!
     
@@ -364,6 +342,23 @@ final class MovieQuizViewController: UIViewController {
 //        showNetworkError(message: error.localizedDescription)
 //    }
     
+//    //красит рамку в зависимости от правильности ответа
+//    func showAnswerResult(isCorrect: Bool){
+//        buttonEnabled(isEnabled: false)
+//        if isCorrect {
+//            presenter.switchToNextQuestion()
+//        }
+//        imageView.layer.masksToBounds = true
+//        imageView.layer.borderWidth = 8
+//        imageView.layer.cornerRadius = 20
+//        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+//        
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
+//            guard let self = self else { return }
+//            presenter.showNextQuestionOrResults()
+//            //обрати внимание!!!!!self.presenter.questionFactory = self.questionFactor. всё нормально, это удалили позднее)
+//        }
+//    }
 }
 // MARK: - Preview
 struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {

@@ -6,28 +6,49 @@
 //
 
 import Foundation
-import UIKit
 
 class MovieQuizPresenter: QuestionFactoryDelegate {
     
     //MARK: - Properties
-    weak var viewController: MovieQuizViewController? // почему так, а не добавлением инициализатора () потому что слабая ссылка требует опционал же!!!!!!!! вспомнил!!!1
-    var currentQuestion: QuizQuestion?
-    let questionsAmount: Int = 10
+    private weak var viewController: MovieQuizViewControllerProtocol? // почему так, а не добавлением инициализатора () потому что слабая ссылка требует опционал же!!!!!!!! вспомнил!!!1
+    private var currentQuestion: QuizQuestion?
+    private let questionsAmount: Int = 10
     private var currentQuestionIndex: Int = 0
-    var correctAnswers = 0
-    var questionFactory: QuestionFactoryProtocol?
+    private var correctAnswers = 0
+    private var questionFactory: QuestionFactoryProtocol?
     //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
+    private let statisticService: StatisticServiceProtocol!
     
-    init(viewController: MovieQuizViewController) {
+    init(viewController: MovieQuizViewControllerProtocol) {
             self.viewController = viewController
             
+        statisticService = StatisticService()
+        
             questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
             questionFactory?.loadData()
             viewController.showLoadingIndicator()
         }
     
     //MARK: - Methods
+    
+    private func makeResultsMessage() -> String {
+        statisticService.store(correct: correctAnswers, total: questionsAmount)
+        
+        let bestGame = statisticService.bestGame
+        
+        let totalPlaysCountLine = "Количество сыгранных квизов: \(statisticService.gamesCount)"
+        let currentGameResultLine = "Ваш результат: \(correctAnswers)\\\(questionsAmount)"
+        let bestGameInfoLine = "Рекорд: \(bestGame.correct)\\\(bestGame.total)"
+        + " (\(bestGame.date.dateTimeString))"
+        let averageAccuracyLine = "Средняя точность: \(String(format: "%.2f", statisticService.totalAccuracy))%"
+        
+        let resultMessage = [
+            currentGameResultLine, totalPlaysCountLine, bestGameInfoLine, averageAccuracyLine
+        ].joined(separator: "\n")
+        
+        return resultMessage
+    }
+    
     func isLastQuestion() -> Bool {
         currentQuestionIndex == questionsAmount - 1
     }
@@ -46,23 +67,33 @@ class MovieQuizPresenter: QuestionFactoryDelegate {
         )
     }
     
-    @objc func buttonTapped(_ sender: UIButton) {
-        let givenAnswer = sender == viewController?.yesButton
-        guard let currentQuestion = currentQuestion else {
-            return
+    
+    
+    //красит рамку в зависимости от правильности ответа
+    private func proceedWithAnswer(isCorrect: Bool){
+        viewController?.buttonEnabled(isEnabled: false)
+        if isCorrect {
+            correctAnswers += 1
         }
-        viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+        
+        
+        viewController?.highlightImageBorder(isCorrectAnswer: isCorrect) // шаг 9 - непонятно. все эти параметры были в функции showAnswerResult, переместили их обратно в контроллер.
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
+            guard let self = self else { return }
+            self.proceedToNextQuestionOrResults()
+            //обрати внимание!!!!!self.presenter.questionFactory = self.questionFactor. всё нормально, это удалили позднее)
+        }
     }
     
+    
     //переключает следующий вопрос или вызывает алерт
-    func showNextQuestionOrResults(){
+    private func proceedToNextQuestionOrResults(){
         if self.isLastQuestion() {
-                        
-            let text = "Вы ответили на \(correctAnswers) из 10, попробуйте ещё раз!"
             
             let viewModel = QuizResultsViewModel(
                 title: "Этот раунд окончен!",
-                text: text,
+                text: makeResultsMessage(),
                 buttonText: "Сыграть ещё раз!")
             
             viewController?.show(quiz: viewModel)
@@ -91,7 +122,7 @@ class MovieQuizPresenter: QuestionFactoryDelegate {
             questionFactory?.requestNextQuestion()
         }
         
-        func didFailToLoadData(with error: Error) {
+    func didFailToLoadData(with error: Error) {
             let message = error.localizedDescription
             viewController?.showNetworkError(message: message)
         }
@@ -101,4 +132,15 @@ class MovieQuizPresenter: QuestionFactoryDelegate {
         correctAnswers = 0
         questionFactory?.requestNextQuestion()
     }
+    
+    func didAnswer(isYes: Bool) {
+            guard let currentQuestion = currentQuestion else {
+                return
+            }
+
+            let givenAnswer = isYes
+
+            proceedWithAnswer(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+        }
+    
 }

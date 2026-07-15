@@ -17,7 +17,6 @@
   },
   "testTargets" : [
     {
-      "parallelizable" : true,
       "target" : {
         "containerPath" : "container:MovieQuiz.xcodeproj",
         "identifier" : "005063482FF9A8CB009ABEC3",
