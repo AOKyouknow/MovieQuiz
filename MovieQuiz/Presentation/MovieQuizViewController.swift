@@ -1,7 +1,7 @@
 import UIKit
 import SwiftUI
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, AlertDelegate {
+final class MovieQuizViewController: UIViewController, MovieQuizViewControllerProtocol {
     
     // MARK: - UI Elements
     
@@ -24,6 +24,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         image.translatesAutoresizingMaskIntoConstraints = false
         //
         image.setContentCompressionResistancePriority(.init(750), for: .vertical)
+        image.accessibilityIdentifier = "imageView"
+                
         return image
     }()
     
@@ -53,6 +55,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         label.translatesAutoresizingMaskIntoConstraints = false
         //
         label.setContentCompressionResistancePriority(.init(250), for: .vertical)
+        label.accessibilityIdentifier = "counterLabel"
         
         return label
     }()
@@ -73,7 +76,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
     }()
     
     //кнопка "да"
-    private let yesButton: UIButton = {
+    let yesButton: UIButton = {
         let button = UIButton()
         button.setTitle("Да", for: .normal)
         button.titleLabel?.font = UIFont(name: "YSDisplay-Medium", size: 20)
@@ -83,6 +86,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         button.translatesAutoresizingMaskIntoConstraints = false
         //
         button.setContentCompressionResistancePriority(.init(1000), for: .vertical)
+        button.accessibilityIdentifier = "yesButton"
         
         return button
     }()
@@ -98,60 +102,43 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         button.translatesAutoresizingMaskIntoConstraints = false
         //
         button.setContentCompressionResistancePriority(.init(1000), for: .vertical)
+        button.accessibilityIdentifier = "noButton"
+        
         return button
     }()
     
     // MARK: - Properties
-    var currentQuestionIndex = 0
-    var correctAnswers = 0
-    private let questionsAmount = 10
-    private var currentQuestion: QuizQuestion?
     
-    private var questionFactory: QuestionFactoryProtocol?
-    //переменная раньше связывавшая классы, теперь cвязывает контроллер и протокол, а значит на его месте может быть любой класс
+    
     private var alertPresenter = AlertPresenter()
     
-    private var staticService: StatisticServiceProtocol?
+    private var statisticService: StatisticServiceProtocol?
+    
+    private var presenter: MovieQuizPresenter!
     
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        
-        alertPresenter.delegate = self //
-        
-        //инъекция через свойство
-        let questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
-        //questionFactory.delegate = self //
-        self.questionFactory = questionFactory
-        //questionFactory.requestNextQuestion()
+                
         showLoadingIndicator()
-        questionFactory.loadData()
         
-        staticService = StaticService()
+        statisticService = StatisticService()
+        
+        presenter = MovieQuizPresenter(viewController: self)
+        
     }
     
-    //MARK: - QuestionFactoryDelegate
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        
-        guard let question = question else { return }
-        currentQuestion = question
-        let viewModel = convert(model: question)
-        
-        DispatchQueue.main.async { [weak self] in
-            self?.show(quiz: viewModel)
-        }
-    }
+    
     
     // MARK: - Actions
-    //обрабатывает нажатие
-    @objc private func buttonTapped(_ sender: UIButton) {
-        let givenAnswer = sender == yesButton
-        guard let currentQuestion = currentQuestion else {
-            return
-        }
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+    
+    @objc func buttonTapped(_ sender: UIButton) {
+        let isYesAnswer = sender == yesButton
+        
+        presenter.didAnswer(isYes: isYesAnswer)
     }
+
     
     // MARK: - Private Methods
     
@@ -203,104 +190,57 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
     }
     
     //блокирует кнопки
-    private func buttonEnabled(isEnabled: Bool){
+    func buttonEnabled(isEnabled: Bool){
         yesButton.isEnabled = isEnabled
         noButton.isEnabled = isEnabled
     }
     
-    //создаёт модель вью из вопроса
-    private func convert(model: QuizQuestion) -> QuizStepViewModel{                
-        //let image = UIImage(named: model.image) ?? UIImage()
-        return QuizStepViewModel(
-            image: UIImage(data: model.image) ?? UIImage(),
-            question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)"
-        )
-    }
     
     //обновляет элементы согласно структуре
-    private func show(quiz step: QuizStepViewModel){
-        imageView.image = step.image
+    func show(quiz step: QuizStepViewModel) {
+        imageView.image = UIImage(data: step.image) ?? UIImage()
+        imageView.layer.borderWidth = 0
+        imageView.layer.borderColor = UIColor.clear.cgColor
+        imageView.layer.cornerRadius = 20 // добавлено скругление рамки
+        
         textLabel.text = step.question
         counterLabel.text = step.questionNumber
-        imageView.layer.borderWidth = 0
-        imageView.layer.borderColor = nil
-        imageView.layer.cornerRadius = 20 // добавлено скругление рамки
     }
-    
-    //красит рамку в зависимости от правильности ответа
-    private func showAnswerResult(isCorrect: Bool){
-        buttonEnabled(isEnabled: false)
-        if isCorrect {
-            correctAnswers += 1
-        }
-        imageView.layer.masksToBounds = true
-        imageView.layer.borderWidth = 8
-        imageView.layer.cornerRadius = 20
-        imageView.layer.borderColor = isCorrect ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+    func show(quiz result: QuizResultsViewModel) {
+                
+        let alert = UIAlertController(
+            title: result.title,
+            message: result.text,
+            preferredStyle: .alert)
+            
+        alert.view.accessibilityIdentifier = "alertResult"
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0){ [weak self] in
-            guard let self = self else { return }
-            self.showNextQuestionOrResults()
-        }
-    }
-    
-    //переключает следующий вопрос или вызывает алерт
-    private func showNextQuestionOrResults(){
-        if currentQuestionIndex == questionsAmount - 1 {
-            staticService?.store(correct: correctAnswers, total: questionsAmount)
-                        
-            let text = """
-            Ваш результат: \(correctAnswers)/10\n
-            Количество сыгранных квизов: \(staticService?.gamesCount ?? 0)\n
-            Рекорд: \(staticService?.bestGame.correct ?? 0)/10 (\(staticService?.bestGame.date.dateTimeString ?? "Рекорд не установлен:)"))\n
-            Средняя точность: \(String(format: "%.2f", staticService?.totalAccuracy ?? 0))%
-            """
+        let action = UIAlertAction(title: result.buttonText, style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                presenter.restarGame()
+            }
             
-            let alertModel = AlertModel(
-                title: "Этот раунд окончен!",
-                message: text,
-                buttonText: "Сыграть ещё раз!",
-                completion: {[weak self] in
-                    
-                    guard let self = self else {return}
-                    
-                    self.correctAnswers = 0
-                    self.currentQuestionIndex = 0
-                    self.questionFactory?.requestNextQuestion()
-                    self.buttonEnabled(isEnabled: true)
-                }
-            )
-            alertPresenter.show(quiz: alertModel) // создаёт и ВЫЗЫВАЕТ ф-ю показа алерта
-            
-        } else {
-            currentQuestionIndex += 1
-            questionFactory?.requestNextQuestion()
-            buttonEnabled(isEnabled: true)
-        }
+        alert.addAction(action)
+        self.present(alert, animated: true, completion: nil)
+        
     }
     
-    func showAlert(alertController: UIAlertController) { // ОБЪЯВЛЯЕТ ф-ю показа. только показывает алерт именно на этом экране.
-        self.present(alertController, animated: true)
-    }
-    
+       
     func showNetworkError(message: String) {
         hideLoadingIndicator()
-        /* У этого алерта должна быть кнопка «Попробовать ещё раз», по нажатию на которую мы будем пытаться снова загрузить данные.
-         Заголовком алерта пусть будет просто «Ошибка».*/
         let alertNetworkErrorModel = AlertModel(
             title: "Ошибка",
             message: message,
             buttonText: "Попробовать ещё раз",
             completion: {[weak self] in
                 guard let self = self else { return }
-                self.correctAnswers = 0
-                self.currentQuestionIndex = 0
-                self.questionFactory?.requestNextQuestion()
+                
+                presenter.restarGame()
+                
                 self.buttonEnabled(isEnabled: true)
             }
         )
-        alertPresenter.show(quiz: alertNetworkErrorModel)
+        alertPresenter.show(in: self, model: alertNetworkErrorModel)
     }
     
     func hideLoadingIndicator() {
@@ -310,14 +250,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate, 
         activityIndicator.startAnimating()
     }
     
-    func didLoadDataFromServer() {
-        activityIndicator.isHidden = true
-        questionFactory?.requestNextQuestion()
-    }
+    func highlightImageBorder(isCorrectAnswer: Bool) {
+            imageView.layer.masksToBounds = true
+            imageView.layer.borderWidth = 8
+            imageView.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+        }
     
-    func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription)
-    }
 }
 // MARK: - Preview
 struct MovieQuizViewControllerPreview: UIViewControllerRepresentable {

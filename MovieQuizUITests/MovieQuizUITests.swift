@@ -1,0 +1,108 @@
+//
+//  MovieQuizUITests.swift
+//  MovieQuizUITests
+//
+//  Created by Алик on 07.07.2026.
+//
+
+import XCTest
+@testable import MovieQuiz
+
+final class MovieQuizUITests: XCTestCase {
+    
+    var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launch()
+    }
+
+    override func tearDownWithError() throws {
+        try super.tearDownWithError()
+        
+        app.terminate()
+        app = nil
+    }
+
+    func testExample() throws {
+        // UI tests must launch the application that they test.
+        let app = XCUIApplication()
+        app.launch()
+    }
+
+    func testYesButton() throws {
+        
+        //sleep(3)
+        let firstPoster = app.images["imageView"]
+        //XCTAssertTrue(firstPoster.exists)
+        let firstPosterData = firstPoster.screenshot().pngRepresentation
+        
+        app.buttons["yesButton"].tap()
+        //sleep(3)
+        
+        let secondPoster = app.images["imageView"]
+        //XCTAssert(secondPoster.exists)
+        let secondPosterData = secondPoster.screenshot().pngRepresentation
+        
+        XCTAssertNotEqual(firstPosterData, secondPosterData)
+    }
+    
+    
+    func testNoButton() throws {
+        sleep(3)
+        let firstPoster = app.images["imageView"]
+        let firstPosterData = firstPoster.screenshot().pngRepresentation
+        
+        app.buttons["noButton"].tap()
+        sleep(3)
+        
+        let secondPoster = app.images["imageView"]
+        let secondPosterData = secondPoster.screenshot().pngRepresentation
+        
+        XCTAssertNotEqual(firstPosterData, secondPosterData)
+        
+        let counterLabel = app.staticTexts["counterLabel"].label
+        XCTAssertEqual(counterLabel, "2/10")
+    }
+    
+    func testAlert() throws {
+        for _ in 1...10 {
+            app.buttons["yesButton"].tap()
+            sleep(1)
+        }
+        
+        XCTAssertTrue(app.alerts["alertResult"].waitForExistence(timeout: 1))
+        
+        XCTAssertEqual(app.alerts["alertResult"].buttons["Сыграть ещё раз!"].label, "Сыграть ещё раз!")
+        
+        XCTAssertEqual(app.alerts["alertResult"].label, "Этот раунд окончен!")
+        
+        
+    }
+    
+    func testAlertDismiss() {
+        sleep(1)
+        for _ in 1...10 {
+            app.buttons["noButton"].tap()
+            sleep(1)
+        }
+        
+        let alert = app.alerts["alertResult"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5), "Алерт результатов не появился на экране!")
+        let alertButton = alert.buttons["Сыграть ещё раз!"] //
+        XCTAssertTrue(alertButton.exists, "Кнопка 'Сыграть ещё раз!' не найдена на алерте")
+        alertButton.tap()
+        
+        
+        sleep(1)
+        
+        let indexLabel = app.staticTexts["counterLabel"]
+        
+        XCTAssertFalse(alert.exists)
+        XCTAssertTrue(indexLabel.label == "1/10")
+    } 
+   
+}//
